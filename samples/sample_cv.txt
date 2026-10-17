@@ -1,0 +1,46 @@
+ANANYA RAO
+Mumbai, Maharashtra | ananya.rao.sample@example.com | +91 98765 43210 | linkedin.com/in/ananya-rao-sample
+Date of Birth: 14/03/1997
+Marital Status: Single
+
+[Fictional sample CV for testing CareerMatch AI]
+
+SUMMARY
+Supply chain professional with about 4 years of experience in demand planning and logistics at an FMCG company, currently completing a PGDM in Operations & Strategy. Interested in consulting.
+
+EDUCATION
+PGDM (Operations & Strategy), Westbridge Institute of Management, Mumbai | 2025 - 2027 (expected) | CGPA 3.4/4.0
+B.E. Mechanical Engineering, Coastal Institute of Technology, Pune | 2014 - 2018 | 7.9/10
+
+WORK EXPERIENCE
+Northwind Consumer Goods Pvt. Ltd. (fictional FMCG company), Mumbai
+Senior Executive - Demand Planning | Jul 2021 - May 2025
+- Led monthly S&OP demand review for the personal care category across 4 regions
+- Responsible for forecasting for ~350 SKUs using SAP APO and Excel
+- Reduced forecast error (MAPE) from 38% to 27% by introducing a statistical baseline plus market-intelligence overlay
+- Worked with sales and marketing teams on new product launches
+- Built a Power BI dashboard for inventory health that was adopted by the regional supply chain heads
+- Handled various ad-hoc analysis requests from management
+
+Brightpath Logistics Pvt. Ltd. (fictional 3PL), Pune
+Graduate Engineer Trainee / Executive - Warehouse Operations | Aug 2018 - Jun 2021
+- Managed day-to-day operations of a 60,000 sq ft multi-client warehouse
+- Improved picking productivity through slotting changes
+- Coordinated with transporters to ensure timely dispatches
+- Trained and supervised a team of 12 warehouse associates
+- Part of the team that implemented a new WMS
+
+PROJECTS (PGDM)
+- Live project with a D2C beauty brand: analysed last-mile delivery costs and recommended a hub-and-spoke model (in progress)
+- Course project: network optimisation case for a dairy company using Excel Solver
+
+SKILLS
+Demand planning, S&OP, Inventory management, Warehouse operations, SAP APO, Advanced Excel (Power Query, Solver), Power BI, Basic SQL, PowerPoint, Stakeholder management
+
+CERTIFICATIONS
+Lean Six Sigma Yellow Belt (2020)
+Google Data Analytics Certificate (2023)
+
+ACHIEVEMENTS
+- "Supply Chain Star" quarterly award, Northwind Consumer Goods (Q3 FY2023)
+- Runner-up, inter-college operations case competition (2025)

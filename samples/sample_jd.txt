@@ -1,0 +1,34 @@
+[Illustrative sample JD written for testing CareerMatch AI - not an actual job posting]
+
+Associate Consultant - Strategy & Operations (Supply Chain)
+Deloitte India (Deloitte Touche Tohmatsu India LLP) | Mumbai / Bengaluru | Hybrid
+
+About the role
+Our Strategy & Operations practice helps consumer, retail and manufacturing clients redesign their supply chains, cut cost-to-serve and build resilient, digitally enabled operations. As an Associate Consultant you will work in client-facing teams on diagnostics, network design and transformation programmes.
+
+Key responsibilities
+- Structure ambiguous client problems into hypotheses and workplans; drive analysis to answer them
+- Conduct supply chain diagnostics: inventory, demand planning (S&OP), procurement, logistics and network cost analysis
+- Build Excel-based and Python/SQL data models to size opportunities and quantify business cases
+- Prepare executive-ready PowerPoint storylines and present findings to client managers
+- Run stakeholder interviews and workshops with client operations and finance teams
+- Support implementation: PMO, KPI dashboards (Power BI / Tableau), change management
+- Contribute to proposals, market research and thought leadership on supply chain trends
+- Mentor analysts and manage day-to-day workstream deliverables
+
+Required qualifications
+- MBA / PGDM from a premier institute (or equivalent postgraduate degree)
+- 3-6 years of total experience, including at least 2 years in supply chain, operations, procurement or logistics roles in industry or consulting
+- Strong problem-solving and structured thinking; comfort with case-style analysis
+- Advanced Excel and PowerPoint; working knowledge of SQL or Python for data analysis
+- Excellent written and verbal communication; ability to engage senior stakeholders
+
+Preferred qualifications
+- Experience with ERP systems (SAP S/4HANA, Oracle) or planning tools (Kinaxis, o9, Blue Yonder)
+- Exposure to network optimisation, inventory optimisation or procurement analytics
+- Lean / Six Sigma Green Belt or APICS CSCP certification
+- Experience in the FMCG / consumer goods or retail sector
+- Knowledge of sustainability in supply chains (Scope 3 emissions, ESG reporting)
+
+What we offer
+Learning-focused culture, exposure to marquee clients across sectors, and a clear path to Consultant within 18-24 months.
