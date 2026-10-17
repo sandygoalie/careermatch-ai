@@ -10,7 +10,7 @@ import pii
 import prompts
 import research as research_mod
 import scoring
-from llm import LLMError, structured
+from llm import LLMError
 from parsing import ParsedDoc
 from schemas import (
     CasePrep, Coaching, CVExtraction, CVOptimization, FitAnalysis, JDExtraction,
@@ -92,6 +92,11 @@ class Report:
 Progress = Callable[[str, str, str], None]  # (stage, state: running|done|failed|skipped, detail)
 
 
+def structured(client, model, system, prompt, schema, **kw):
+    """`client` is a providers.* instance; `model` is kept for a uniform, easily faked signature."""
+    return client.structured(system, prompt, schema, **kw)
+
+
 def _j(model) -> str:
     return json.dumps(model.model_dump(), ensure_ascii=False, indent=1) if model else "(unavailable)"
 
@@ -115,7 +120,7 @@ def run_pipeline(client, model: str, jd_doc: ParsedDoc, cv_doc: ParsedDoc,
         for k in tasks:
             progress(k, "running", STAGES[k])
         out: Dict[str, Any] = {}
-        with ThreadPoolExecutor(max_workers=len(tasks)) as ex:
+        with ThreadPoolExecutor(max_workers=min(len(tasks), getattr(client, "max_parallel", 8))) as ex:
             futs = {ex.submit(guarded, fn): k for k, fn in tasks.items()}
             for fut in as_completed(futs):
                 k = futs[fut]
@@ -174,12 +179,18 @@ def run_pipeline(client, model: str, jd_doc: ParsedDoc, cv_doc: ParsedDoc,
         "fit": lambda: structured(client, model, sysmsg, prompts.FIT.format(context=context), FitAnalysis, effort="high"),
         "cv_opt": lambda: structured(client, model, sysmsg,
                                      prompts.CV_OPTIMIZE.format(context=context, missing=missing), CVOptimization),
-        "industry": lambda: research_mod.industry_research(client, model, sysmsg, rep.jd.industry, role, rep.jd.company),
     }
-    if rep.jd.company:
-        g2_tasks["company"] = lambda: research_mod.company_research(client, model, sysmsg, rep.jd.company, role)
+    if not getattr(client, "supports_search", True):
+        no_search = "Web research needs a provider with search (Google Gemini or Anthropic Claude) - skipped"
+        skip("industry", no_search)
+        skip("company", no_search)
     else:
-        skip("company", "No company name found in the JD - add one in the input form to enable company research")
+        g2_tasks["industry"] = lambda: research_mod.industry_research(client, model, sysmsg, rep.jd.industry, role,
+                                                                      rep.jd.company)
+        if rep.jd.company:
+            g2_tasks["company"] = lambda: research_mod.company_research(client, model, sysmsg, rep.jd.company, role)
+        else:
+            skip("company", "No company name found in the JD - add one in the input form to enable company research")
     if rep.is_consulting:
         g2_tasks["cases"] = lambda: structured(client, model, sysmsg,
                                                prompts.CASES.format(industry=rep.jd.industry or "general", context=context),

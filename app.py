@@ -6,10 +6,11 @@ from pathlib import Path
 import streamlit as st
 
 import scoring
-from config import DEFAULT_MODEL_LABEL, FIT_DIMENSIONS, MODELS, SECTIONS
+from config import FIT_DIMENSIONS, SECTIONS
 from export import report_json, report_markdown
-from llm import make_client
+from llm import LLMError
 from parsing import ParseError, parse_input
+from providers import OPENAI_COMPAT_PRESETS, PROVIDERS, list_models, make_provider
 from pipeline import STAGES, dimension_scores, readiness, run_pipeline
 from ui.components import current_weights, inject_css
 from ui.sections import RENDERERS, SECTION_STAGE
@@ -28,11 +29,57 @@ ss.setdefault("jd_text", "")
 ss.setdefault("cv_text", "")
 
 
-def _secret_key() -> str:
-    try:
-        return st.secrets.get("ANTHROPIC_API_KEY", "")
-    except Exception:  # no secrets.toml
-        return ""
+def _configured_key(names) -> str:
+    """A key from environment variables or .streamlit/secrets.toml, if the host configured one."""
+    for n in names:
+        if os.environ.get(n):
+            return os.environ[n]
+        try:
+            if st.secrets.get(n):
+                return st.secrets[n]
+        except Exception:  # no secrets.toml
+            pass
+    return ""
+
+
+OTHER_MODEL = "Other (type a model name)…"
+
+
+def provider_settings():
+    """Sidebar controls. Returns (kind, api_key, model, base_url, service, label) for the chosen provider."""
+    kind = st.selectbox("AI provider", list(PROVIDERS), format_func=lambda k: PROVIDERS[k]["label"], key="provider")
+    spec = PROVIDERS[kind]
+    base_url = service = ""
+    defaults = spec["models"]
+    if kind == "openai_compat":
+        service = st.selectbox("Service", list(OPENAI_COMPAT_PRESETS), key="service")
+        preset_url, defaults = OPENAI_COMPAT_PRESETS[service]
+        base_url = st.text_input("Base URL", value=preset_url, key=f"base_{service}")
+
+    configured = _configured_key(spec["key_env"])
+    if configured:
+        api_key = configured
+        st.success("API key configured by the host", icon="🔑")
+    else:
+        api_key = st.text_input(f"{spec['label'].split(' (')[0]} API key", type="password", key=f"key_{kind}",
+                                help=spec["key_help"] + " Used only for this session; never stored or logged.")
+        st.caption(spec["key_help"])
+
+    fetched_key = f"models_{kind}_{service}"
+    if st.button("🔄 Fetch my models", disabled=not (api_key or "localhost" in base_url),
+                 help="List the models your key can use"):
+        try:
+            ss[fetched_key] = list_models(kind, api_key, base_url)
+        except LLMError as e:
+            st.error(str(e))
+    options = ss.get(fetched_key) or defaults
+    if defaults and ss.get(fetched_key):  # keep recommended defaults on top when available
+        options = [m for m in defaults if m in options] + [m for m in options if m not in defaults]
+    choice = st.selectbox("Model", options + [OTHER_MODEL], key=f"model_{kind}_{service}")
+    model = st.text_input("Model name", key=f"custom_{kind}_{service}").strip() if choice == OTHER_MODEL else choice
+    if kind == "openai_compat":
+        st.caption("ℹ️ Company & industry web research isn't available with this provider; all other sections are.")
+    return kind, api_key, model, base_url, service, spec["label"]
 
 
 def clear_session():
@@ -51,14 +98,7 @@ def compute_scores(rep) -> dict:
 with st.sidebar:
     st.title("🎯 CareerMatch AI")
     st.caption("JD-CV matcher · ATS checker · interview prep")
-    env_key = os.environ.get("ANTHROPIC_API_KEY") or _secret_key()
-    if env_key:
-        api_key = env_key
-        st.success("API key loaded from environment", icon="🔑")
-    else:
-        api_key = st.text_input("Anthropic API key", type="password",
-                                help="Used only for this session; never stored or logged.")
-    model_label = st.selectbox("Model", list(MODELS), index=list(MODELS).index(DEFAULT_MODEL_LABEL))
+    kind, api_key, model, base_url, service, provider_label = provider_settings()
 
     rep = ss.report
     if rep:
@@ -80,7 +120,7 @@ with st.sidebar:
         clear_session()
         st.rerun()
     st.caption("Career guidance and decision support only - not a hiring decision. "
-               "Your CV is sent to the Anthropic API for analysis and is not stored by this app.")
+               "Your redacted CV is sent to the AI provider you choose and is not stored by this app.")
 
 
 # ---------------------------------------------------------------- input view
@@ -90,9 +130,11 @@ def input_view():
     st.write("Upload or paste a **job description** and your **CV**. You'll get a fit score, ATS check, CV rewrite, "
              "interview and case prep, cited company research, a STAR story bank and a 7-day plan.")
     if not api_key:
-        st.info("🔑 **This app runs on your own Anthropic API key.** Paste it in the sidebar - it's used only for "
-                "this browser session and is never stored. Get a key at https://console.anthropic.com "
-                "(a full analysis costs roughly $1-3 on Opus, less on Sonnet).")
+        st.info("🔑 **This app runs on your own AI key** - choose a provider in the sidebar and paste the key. "
+                "It's used only for this browser session and never stored.\n\n"
+                "- **No key yet?** Get a **free Google Gemini key** (no card needed) at https://aistudio.google.com/apikey\n"
+                "- **Anthropic Claude**: paid key from https://console.anthropic.com (roughly $1-3 per analysis on Opus)\n"
+                "- **Open-source models** via Groq or OpenRouter free tiers (web research is skipped for these)")
     if st.button("✨ Load sample JD + CV"):
         ss.jd_text = (SAMPLES / "sample_jd.txt").read_text(encoding="utf-8")
         ss.cv_text = (SAMPLES / "sample_cv.txt").read_text(encoding="utf-8")
@@ -111,8 +153,14 @@ def input_view():
 
     if not st.button("🔍 Analyze", type="primary", width="stretch"):
         return
-    if not api_key:
-        st.error("Enter an Anthropic API key in the sidebar first.")
+    if not api_key and "localhost" not in base_url:
+        st.error("Enter an API key in the sidebar first.")
+        return
+    if not model:
+        st.error("Choose or type a model name in the sidebar.")
+        return
+    if kind == "openai_compat" and not base_url:
+        st.error("Enter the service's base URL in the sidebar.")
         return
     try:
         jd_doc = parse_input(jd_file.name if jd_file else None, jd_file.getvalue() if jd_file else None, ss.jd_text, JD_TYPES)
@@ -137,7 +185,13 @@ def input_view():
             text = STAGES[stage] if state in ("running", "done") else f"{STAGES[stage]} - {detail}"
             rows[stage].write(f"{icons[state]} {text}")
 
-        rep = run_pipeline(make_client(api_key), MODELS[model_label], jd_doc, cv_doc, company.strip(), progress)
+        try:
+            provider = make_provider(kind, api_key, model, base_url, service.split(" (")[0])
+        except Exception as e:
+            status.update(label="Couldn't start the AI provider", state="error")
+            st.error(f"Couldn't set up {provider_label}: {e}")
+            return
+        rep = run_pipeline(provider, provider.description, jd_doc, cv_doc, company.strip(), progress)
         failed = not rep.jd or not rep.cv
         status.update(label="Analysis failed" if failed else "Analysis complete",
                       state="error" if failed else "complete", expanded=failed)

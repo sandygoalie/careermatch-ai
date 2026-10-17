@@ -11,7 +11,15 @@ A Streamlit app that compares a job description (JD) with a candidate's CV and b
 - 7-day preparation plan
 - interview-readiness dashboard
 
-The analysis runs on Claude through the Anthropic API.
+Visitors bring their own AI key and choose the provider:
+
+| Provider | Key | Web research |
+|---|---|---|
+| **Google Gemini** (default) | **Free** at https://aistudio.google.com/apikey, no card needed | ✅ Google Search grounding |
+| **Anthropic Claude** | Paid, from https://console.anthropic.com | ✅ Claude web search |
+| **Open-source / OpenAI-compatible**: Groq, OpenRouter, Together, OpenAI, local Ollama | Free tiers on Groq and OpenRouter | ❌ the research sections are skipped |
+
+**Fetch my models** in the sidebar lists the models your key can actually use, so changes to model names don't break the app.
 
 > Career guidance and decision support only. No score is a probability of being hired.
 
@@ -22,11 +30,14 @@ cd careermatch
 pip install -r requirements.txt
 ```
 
-Provide an Anthropic API key in one of three ways:
+Normally visitors paste their key into the sidebar, where it's held only for that session.
 
-- **Environment variable:** `ANTHROPIC_API_KEY=sk-ant-...`
-- **Secrets file:** copy `.streamlit/secrets.toml.example` to `.streamlit/secrets.toml` and fill it in.
-- **Sidebar:** paste it into the password field. It's held only for that session.
+A host can preconfigure a key instead, through an environment variable or `.streamlit/secrets.toml`:
+- `GEMINI_API_KEY` (or `GOOGLE_API_KEY`)
+- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY`
+
+A preconfigured key means every visitor's analyses use the host's key.
 
 ## Run
 
@@ -61,15 +72,15 @@ Scanned (image-only) PDFs contain no text to extract. The app detects them and a
 | 5 | Interview question bank, and coaching (4 key answers, STAR stories, red flags) | in parallel |
 | 6 | 7-day plan and dashboard inputs | |
 
-Every Claude response is checked against a Pydantic schema (`schemas.py`) and retried once if it doesn't match. If one stage fails, only its section shows an error; the rest of the report still works.
+Every AI response is checked against a Pydantic schema (`schemas.py`) and retried once if it doesn't match. If one stage fails, only its section shows an error; the rest of the report still works.
 
-### Models
+### How each provider gets structured output
 
-| Setting | Detail |
-|---|---|
-| Default model | `claude-opus-5-5` |
-| Alternative | `claude-sonnet-5-5` (faster and cheaper), selectable in the sidebar |
-| Refusal fallback | Server-side `fallbacks: "default"`: if a safety filter declines a request, the API re-runs it on a recommended fallback model |
+| Provider | Structured output | Research | Other |
+|---|---|---|---|
+| **Gemini** | JSON-schema response mode | Google Search grounding. Google returns redirect links, which the app resolves to the real pages. A fact is kept only if its source domain was among the pages Google retrieved. | At most 3 calls at once, with automatic retries when a rate limit is hit |
+| **Claude** | Native structured outputs | Server-side web search. A fact is kept only if its exact URL was retrieved. | If a safety filter declines a request, the API re-runs it on a recommended fallback model (`fallbacks: "default"`) |
+| **OpenAI-compatible** | JSON mode plus the schema in the prompt. If the service rejects JSON mode, the app relies on the prompt alone. | Not available | At most 2 calls at once (free tiers have tight per-minute token limits) |
 
 ## Scoring (all computed in `scoring.py`, not by the AI)
 
@@ -107,7 +118,11 @@ The tests don't call the API. They cover:
 - Scores are approximations for coaching, not what any particular ATS or recruiter would produce.
 - Multi-column PDF layouts can merge text during extraction. Check the "Raw text as parsed" panels.
 - Research quality depends on what web search returns. Little-known companies may get industry research only.
-- A full run makes about 11 model calls (2 with web search). Expect a few minutes and some API cost per analysis, more on Opus than on Sonnet.
+- A full run makes about 11 model calls (2 with web search). Expect a few minutes per analysis.
+- **Free tiers have quotas.**
+  - Gemini Flash's free daily request limit can be small, possibly enough for only one or two full analyses a day. Flash-Lite models usually allow more. You can see your project's limits at https://aistudio.google.com/rate-limit.
+  - Groq's free tier limits tokens per minute, so large CVs or JDs can hit "request too large".
+- **Open-source models** may follow the JSON format less reliably. The app retries once; if a stage still fails, only that section shows an error.
 
 ## Files
 
@@ -115,6 +130,7 @@ The tests don't call the API. They cover:
 |---|---|
 | `app.py` | Streamlit entry point: inputs, progress display, navigation, downloads |
 | `pipeline.py` | Stage order, parallel runs, error isolation |
+| `providers.py` | Gemini, Claude and OpenAI-compatible providers behind one interface, plus model listing |
 | `llm.py` | Anthropic SDK calls: structured output, web search, error messages |
 | `research.py` | Company and industry research, source checking |
 | `prompts.py` | All prompt text |

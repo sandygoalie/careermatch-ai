@@ -1,10 +1,4 @@
-"""Central settings: models, scoring weights, labels."""
-
-MODELS = {
-    "Claude Opus 5.5 (best quality)": "claude-opus-5-5",
-    "Claude Sonnet 5.5 (faster, cheaper)": "claude-sonnet-5-5",
-}
-DEFAULT_MODEL_LABEL = "Claude Opus 5.5 (best quality)"
+"""Central settings: Anthropic tool config, scoring weights, labels. (Provider/model choices live in providers.py.)"""
 
 # Server-side refusal fallback: re-runs a declined request on a recommended model.
 FALLBACK_BETA = "server-side-fallback-2026-07-01"

@@ -6,8 +6,13 @@ from typing import Tuple
 from pydantic import ValidationError
 
 import prompts
-from llm import LLMError, research
+from llm import LLMError
 from schemas import Research, ResearchItem
+
+
+def research(client, model, system, prompt):
+    """Dispatch to the provider's web-search call. Returns (parsed JSON, {retrieved_url: meta})."""
+    return client.research(system, prompt)
 
 
 def _norm_url(u: str) -> str:
