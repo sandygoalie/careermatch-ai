@@ -40,8 +40,10 @@ def fake_structured(client, model, system, prompt, schema, **kw):
                         schemas.JDKeyword(term="Python", synonyms=[], importance="important")]
     if schema is schemas.CVExtraction:
         obj.contact = schemas.Contact(name="Ananya Rao", emails=["ananya.rao.sample@example.com"],
-                                      phones=["+91 98765 43210"], location="Mumbai, Maharashtra", links=[])
+                                      phones=["+91 98765 43210"], location="Mumbai, Maharashtra",
+                                      links=["linkedin.com/in/ananya-rao-sample", "https://github.com/ananya"])
         obj.experience[0].bullets = ["Reduced MAPE from 38% to 27%", "Worked with sales teams"]
+        obj.projects[0].description = 'Portfolio at https://ananya.example/work, "quoted" [bracketed] text'
     if schema is schemas.FitAnalysis:
         keys = typing.get_args(schemas.DimensionKey)
         obj.dimensions = [schemas.DimensionScore(dimension=k, score=6, rationale="r", evidence=["e"]) for k in keys]

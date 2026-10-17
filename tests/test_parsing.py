@@ -110,3 +110,17 @@ def test_redaction():
     assert "2021 - May 2025" in text and "38% to 27%" in text and "60,000 sq ft" in text
     assert any("protected" in x for x in log)
     assert pii.restore_name("Hi [CANDIDATE]", "Ananya Rao") == "Hi Ananya Rao"
+
+
+def test_url_redaction_stops_at_quotes_and_brackets():
+    text, _ = pii.redact('see "linkedin.com/in/x" and (https://a.example/b), [www.c.example]')
+    assert text == 'see "[LINK]" and ([LINK]), [[LINK]]'
+
+
+def test_redact_data_keeps_structure():
+    data = {"contact": {"name": "Ananya Rao", "links": ["linkedin.com/in/ananya-rao"]},
+            "skills": ["Excel"], "n": 3, "bullets": ['Built "dashboard" at https://x.example/y']}
+    out = pii.redact_data(data, name="Ananya Rao", extra=["linkedin.com/in/ananya-rao"])
+    assert out["contact"]["name"] == "[CANDIDATE]"
+    assert "linkedin" not in str(out) and out["n"] == 3 and out["skills"] == ["Excel"]
+    assert out["bullets"] == ['Built "dashboard" at [LINK]']

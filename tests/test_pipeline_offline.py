@@ -34,8 +34,20 @@ def test_all_stages_complete(report):
 
 def test_privacy_applied_before_analysis(report):
     assert "Ananya" not in report.cv_redacted
-    assert "Ananya" not in report.cv.model_dump_json()
+    dumped = report.cv.model_dump_json()
+    assert "Ananya" not in dumped and "linkedin" not in dumped and "github.com" not in dumped
+    assert "ananya.example" not in dumped and "[bracketed]" in dumped
     assert report.candidate_name == "Ananya Rao"
+
+
+def test_redaction_failure_stops_safely(monkeypatch):
+    import pii
+
+    monkeypatch.setattr(pipeline, "structured", fake_structured)
+    monkeypatch.setattr(pii, "redact_data", lambda *a, **k: (_ for _ in ()).throw(ValueError("x")))
+    doc = parse_input(None, None, (ROOT / "samples" / "sample_cv.txt").read_text(encoding="utf-8"), TXT)
+    rep = pipeline.run_pipeline(None, "m", doc, doc, "", lambda *a: None)
+    assert "privacy" in rep.errors and rep.fit is None and "fit" in rep.skipped
 
 
 def test_unverified_sources_dropped(report):

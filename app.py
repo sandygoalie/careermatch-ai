@@ -192,11 +192,11 @@ def input_view():
             st.error(f"Couldn't set up {provider_label}: {e}")
             return
         rep = run_pipeline(provider, provider.description, jd_doc, cv_doc, company.strip(), progress)
-        failed = not rep.jd or not rep.cv
+        failed = not rep.jd or not rep.cv or "privacy" in rep.errors
         status.update(label="Analysis failed" if failed else "Analysis complete",
                       state="error" if failed else "complete", expanded=failed)
     if failed:
-        st.error("Couldn't extract the JD or CV, so the analysis stopped: "
+        st.error("The analysis stopped before the main stages: "
                  + "; ".join(f"{k}: {v}" for k, v in rep.errors.items()))
         return
     ss.report = rep

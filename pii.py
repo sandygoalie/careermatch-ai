@@ -4,7 +4,8 @@ import re
 from typing import Iterable, List, Tuple
 
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-URL = re.compile(r"(?:https?://|www\.)\S+|\b(?:linkedin\.com|github\.com|behance\.net)/\S+", re.I)
+_URL_TAIL = r"[^\s\"'<>()\[\]{},]+"
+URL = re.compile(rf"(?:https?://|www\.){_URL_TAIL}|\b(?:linkedin\.com|github\.com|behance\.net)/{_URL_TAIL}", re.I)
 PHONE = re.compile(r"(?<!\w)\+?\d[\d\s().-]{8,}\d(?!\w)")
 
 # Lines carrying protected characteristics are dropped entirely.
@@ -63,6 +64,17 @@ def redact(text: str, name: str = "", location: str = "", extra: Iterable[str] =
     if hits:
         removed.append(f"candidate name ({hits})")
     return re.sub(r"\n{3,}", "\n\n", text).strip(), removed
+
+
+def redact_data(data, **kw):
+    """Redact every string inside nested dicts/lists (e.g. a model_dump()), leaving the structure intact."""
+    if isinstance(data, str):
+        return redact(data, **kw)[0] if data else data
+    if isinstance(data, dict):
+        return {k: redact_data(v, **kw) for k, v in data.items()}
+    if isinstance(data, list):
+        return [redact_data(v, **kw) for v in data]
+    return data
 
 
 def restore_name(text: str, name: str) -> str:

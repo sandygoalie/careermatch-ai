@@ -159,12 +159,16 @@ def run_pipeline(client, model: str, jd_doc: ParsedDoc, cv_doc: ParsedDoc,
     progress("privacy", "running", STAGES["privacy"])
     c = rep.cv.contact
     rep.candidate_name = c.name
-    rep.cv_redacted, rep.redaction_log = pii.redact(cv_doc.text, name=c.name, location=c.location,
-                                                    extra=[*c.emails, *c.phones, *c.links])
-    rep.cv = CVExtraction.model_validate_json(
-        pii.redact(rep.cv.model_dump_json(), name=c.name, location=c.location,
-                   extra=[*c.emails, *c.phones, *c.links])[0]
-    ) if c.name else rep.cv
+    who = dict(name=c.name, location=c.location, extra=[*c.emails, *c.phones, *c.links])
+    try:
+        rep.cv_redacted, rep.redaction_log = pii.redact(cv_doc.text, **who)
+        rep.cv = CVExtraction.model_validate(pii.redact_data(rep.cv.model_dump(), **who))
+    except Exception as e:  # never continue to analysis with unredacted data
+        rep.errors["privacy"] = f"Redaction failed ({type(e).__name__}); analysis stopped to protect your data."
+        progress("privacy", "failed", rep.errors["privacy"])
+        for k in list(STAGES)[3:]:
+            skip(k, "Skipped because redaction failed")
+        return rep
     progress("privacy", "done", STAGES["privacy"])
 
     bullets = [b for e in rep.cv.experience for b in e.bullets]
