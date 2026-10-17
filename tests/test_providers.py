@@ -16,6 +16,32 @@ def test_inline_schema_has_no_refs():
     assert "$ref" not in s and "$defs" not in s and '"dimension"' in s
 
 
+def _all_schemas():
+    import schemas
+
+    return [v for v in vars(schemas).values()
+            if isinstance(v, type) and issubclass(v, schemas.BaseModel) and v is not schemas.BaseModel]
+
+
+@pytest.mark.parametrize("schema", _all_schemas(), ids=lambda s: s.__name__)
+def test_inline_schema_required_fields_all_defined(schema):
+    """Regression: a field literally named 'title' was stripped along with pydantic's title labels."""
+    def check(node, path="$"):
+        if isinstance(node, dict):
+            if node.get("type") == "object" or "properties" in node:
+                missing = set(node.get("required", [])) - set(node.get("properties", {}))
+                assert not missing, f"{schema.__name__} {path}: required but undefined {missing}"
+            for k, v in node.items():
+                check(v, f"{path}.{k}")
+        elif isinstance(node, list):
+            for i, v in enumerate(node):
+                check(v, f"{path}[{i}]")
+
+    inlined = providers.inline_schema(schema)
+    check(inlined)
+    assert not any(k == "title" and isinstance(v, str) for k, v in inlined.items())
+
+
 # ---------------- Gemini
 
 class FakeModels:

@@ -67,7 +67,9 @@ def inline_schema(schema: Type[BaseModel]) -> dict:
         if isinstance(node, dict):
             if "$ref" in node:
                 return walk(defs[node["$ref"].split("/")[-1]])
-            return {k: walk(v) for k, v in node.items() if k != "title"}
+            # Drop pydantic's "title" labels (string values) but keep real fields named "title",
+            # which appear inside "properties" with a schema-dict value.
+            return {k: walk(v) for k, v in node.items() if not (k == "title" and isinstance(v, str))}
         if isinstance(node, list):
             return [walk(v) for v in node]
         return node
